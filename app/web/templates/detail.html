@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}{{ email.subject or "无主题" }} · 邮件人工审核{% endblock %}
+{% block content %}
+<div class="detail-header">
+  <a href="{{ list_url }}">返回列表</a>
+  {% if not history_mode and email.read_at is none and email.category in ["ignore", "notify", "respond"] %}
+  <form action="/reviews/{{ email.id }}/read" method="post">
+    <button type="submit" class="secondary">标记已读</button>
+  </form>
+  {% endif %}
+</div>
+<section class="panel">
+  <h2>原始邮件</h2>
+  <div class="meta">
+    <strong>状态</strong><span>{{ status_labels.get(email.status, email.status) }}</span>
+    <strong>分类</strong><span>{{ category_labels.get(email.category, "-") if email.category else "-" }}</span>
+    <strong>判定理由</strong><span>{{ email.route_reason or "-" }}</span>
+    <strong>判定来源</strong><span>{{ email.route_source or "-" }}</span>
+    <strong>Message-ID</strong><span>{{ email.message_id }}</span>
+    <strong>发件人</strong><span>{{ email.sender }}</span>
+    <strong>收件人</strong><span>{{ email.recipient }}</span>
+    <strong>回复地址</strong><span>{{ email.reply_to or email.sender }}</span>
+    <strong>接收时间</strong><span>{{ email.received_at.strftime("%Y-%m-%d %H:%M") if email.received_at else "-" }}</span>
+    <strong>邮箱状态</strong><span>{% if email.read_at %}已读{% else %}未读{% endif %}</span>
+    <strong>重写轮次</strong><span>{{ email.rewrite_rounds }} / {{ max_rewrite_rounds }}</span>
+  </div>
+  {% if email.body_truncated %}<div class="notice alert">正文过长，以下为截断后的内容</div>{% endif %}
+  <p style="margin-top: 14px; font-weight: 600;">正文</p>
+  <pre>{{ email.body_text }}</pre>
+</section>
+
+<section class="panel">
+  <h2>分类修正</h2>
+  {% if history_mode %}
+  <p class="muted">历史记录仅支持查看，不再修改分类。</p>
+  {% elif email.status in ["ignored", "notified", "draft_pending", "send_failed"] %}
+  <div class="actions">
+    {% if email.category != "ignore" %}
+    <form action="/reviews/{{ email.id }}/actions" method="post">
+      <input type="hidden" name="action" value="reclassify">
+      <input type="hidden" name="target_category" value="ignore">
+      <button type="submit" class="secondary">改为忽略</button>
+    </form>
+    {% endif %}
+    {% if email.category != "notify" %}
+    <form action="/reviews/{{ email.id }}/actions" method="post">
+      <input type="hidden" name="action" value="reclassify">
+      <input type="hidden" name="target_category" value="notify">
+      <button type="submit" class="secondary">改为通知</button>
+    </form>
+    {% endif %}
+    {% if email.category != "respond" %}
+    <form action="/reviews/{{ email.id }}/actions" method="post">
+      <input type="hidden" name="action" value="upgrade">
+      <button type="submit" class="secondary">升级为待回复</button>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="muted">该邮件已结束外发流程，不再修改分类。</p>
+  {% endif %}
+</section>
+<section class="panel">
+  <h2>回复草稿</h2>
+  {% set can_review = email.status == "draft_pending" and not history_mode %}
+  {% if can_review %}
+  <form action="/reviews/{{ email.id }}/actions" method="post">
+    <input type="hidden" name="continue_review" value="1">
+    <textarea name="draft" aria-label="回复草稿">{{ current_draft }}</textarea>
+    <div class="actions" style="margin-top: 10px;">
+      <button type="submit" name="action" value="approve">批准发送</button>
+      <button type="submit" name="action" value="edit_send">修改后发送</button>
+    </div>
+  </form>
+  <form action="/reviews/{{ email.id }}/actions" method="post" style="margin-top: 12px;">
+    <input type="hidden" name="continue_review" value="1">
+    <input type="text" name="feedback" placeholder="重写反馈，例如：更正式、补充时间点" aria-label="重写反馈">
+    <div class="actions" style="margin-top: 10px;">
+      <button type="submit" name="action" value="rewrite" class="warn">反馈重写</button>
+    </div>
+  </form>
+  {% elif email.status == "send_failed" %}
+  <div class="notice alert">上次发送失败。以下是最后一份草稿，确认后可人工重试。</div>
+  <pre>{{ current_draft }}</pre>
+  <form action="/reviews/{{ email.id }}/actions" method="post">
+    <input type="hidden" name="continue_review" value="1">
+    <button type="submit" name="action" value="retry_send">人工重试发送</button>
+  </form>
+  {% elif email.status in ["notified", "ignored"] %}
+  <pre>{{ current_draft or "当前状态没有待审核草稿" }}</pre>
+  {% else %}
+  <pre>{{ current_draft or "当前状态没有待审核草稿" }}</pre>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>草稿历史</h2>
+  {% for draft in email.drafts %}
+  <article style="border-top: 1px solid #e5eaf0; padding: 10px 0;">
+    <div class="muted">第 {{ draft.round_number }} 轮 · {{ draft.source }} · {{ draft.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+    {% if draft.feedback %}<div class="muted">反馈：{{ draft.feedback }}</div>{% endif %}
+    <pre>{{ draft.content }}</pre>
+  </article>
+  {% else %}<p class="muted">暂无草稿</p>{% endfor %}
+</section>
+
+<section class="panel">
+  <h2>操作历史</h2>
+  <table>
+    <thead><tr><th>时间</th><th>动作</th><th>详情</th></tr></thead>
+    <tbody>
+      {% for log in email.audit_logs %}
+      <tr>
+        <td>{{ log.created_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+        <td>{{ log.action }}</td>
+        <td><pre>{{ log.detail }}</pre></td>
+      </tr>
+      {% else %}
+      <tr><td colspan="3" class="muted">暂无操作</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

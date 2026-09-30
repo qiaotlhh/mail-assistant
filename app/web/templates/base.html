@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}邮件人工审核{% endblock %}</title>
+  <style>
+    :root { color-scheme: light; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+    body { margin: 0; background: #f4f6f8; color: #1f2937; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: #ffffff; border-bottom: 1px solid #d8dee5; }
+    main { max-width: 1080px; margin: 24px auto; padding: 0 16px; }
+    a { color: #155eef; }
+    .brand { font-size: 18px; font-weight: 650; }
+    .muted { color: #667085; }
+    .notice { padding: 10px 12px; margin-bottom: 12px; border-radius: 6px; border: 1px solid; }
+    .notice.ok { background: #ecfdf3; border-color: #a6f4c5; color: #065f46; }
+    .notice.error, .notice.alert { background: #fffaeb; border-color: #fedf89; color: #93370d; }
+    .alert-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    .alert-title { color: #93370d; font-size: 14px; font-weight: 650; }
+    .clear-alerts { margin: 0; }
+    table { width: 100%; border-collapse: collapse; background: #ffffff; border: 1px solid #d8dee5; }
+    .review-table th:nth-child(3), .review-table td:nth-child(3),
+    .review-table th:nth-child(4), .review-table td:nth-child(4),
+    .review-table th:nth-child(5), .review-table td:nth-child(5),
+    .review-table th:nth-child(6), .review-table td:nth-child(6) {
+      width: 1%;
+      white-space: nowrap;
+    }
+    th, td { padding: 11px 12px; border-bottom: 1px solid #e5eaf0; text-align: left; vertical-align: top; }
+    th { color: #475467; background: #f9fafb; font-size: 13px; }
+    .panel { background: #ffffff; border: 1px solid #d8dee5; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .panel h2 { margin-top: 0; font-size: 16px; }
+    .meta { display: grid; grid-template-columns: 150px 1fr; gap: 8px 12px; font-size: 14px; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; font-family: inherit; }
+    .badge { display: inline-block; min-width: 68px; text-align: center; padding: 3px 7px; border-radius: 999px; font-size: 12px; background: #eef2f6; color: #344054; }
+    .badge.pending { background: #eef4ff; color: #1849a9; }
+    .badge.notify { background: #fff4e8; color: #9a3412; }
+    .badge.done { background: #ecfdf3; color: #065f46; }
+    .badge.failed { background: #fef3f2; color: #b42318; }
+    textarea { width: 100%; min-height: 170px; box-sizing: border-box; padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; }
+    input[type=text] { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+    button { padding: 8px 12px; border: 1px solid transparent; border-radius: 6px; cursor: pointer; background: #155eef; color: #ffffff; }
+    button.secondary { background: #ffffff; border-color: #cbd5e1; color: #1f2937; }
+    button.warn { background: #b54708; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .detail-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    .detail-header form { margin: 0; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .poll-form { margin: 0 0 16px; }
+    .filter { padding: 5px 9px; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; background: #fff; }
+    .filter.active { background: #eef4ff; border-color: #84adff; color: #1849a9; }
+    .pagination { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 12px; }
+    .pagination-info { color: #475467; font-size: 13px; }
+    .page-link { min-width: 64px; box-sizing: border-box; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: center; text-decoration: none; background: #ffffff; color: #155eef; }
+    .page-link.disabled { color: #98a2b3; background: #f9fafb; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">邮件智能助手</div>
+    <a href="/">审核列表</a>
+  </header>
+  <main>
+    {% if alerts %}
+    <div class="alert-header">
+      <span class="alert-title">系统告警（最近 {{ alerts | length }} 条）</span>
+      <form action="/alerts/clear" method="post" class="clear-alerts">
+        <button type="submit" class="secondary">清除告警</button>
+      </form>
+    </div>
+    {% for alert in alerts %}<div class="notice alert">{{ alert }}</div>{% endfor %}
+    {% endif %}
+    {% if message %}<div class="notice ok">{{ message }}</div>{% endif %}
+    {% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

@@ -1,0 +1,36 @@
+[project]
+name = "langgraph-email-agent"
+version = "0.1.0"
+description = "基于 LangGraph 的人机协同邮件智能助手"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+    "jinja2>=3.1,<4.0",
+    "python-multipart>=0.0.18,<1.0",
+    "pydantic>=2.7,<3.0",
+    "pydantic-settings>=2.3,<3.0",
+    "sqlalchemy>=2.0,<3.0",
+    "tzdata>=2024.1",
+    "langgraph>=0.2,<1.0",
+    "langgraph-checkpoint-sqlite>=2.0,<3.0",
+    "openai>=1.35,<3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.23,<2.0",
+    "httpx>=0.27,<1.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

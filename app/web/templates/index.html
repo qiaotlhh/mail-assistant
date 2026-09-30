@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}审核列表 · 邮件人工审核{% endblock %}
+{% block content %}
+<div class="filters">
+  <a class="filter {% if selected_view != 'history' and not selected_status %}active{% endif %}" href="/">待处理</a>
+  <a class="filter {% if selected_status == 'ignored' %}active{% endif %}" href="/?status=ignored">已忽略</a>
+  <a class="filter {% if selected_status == 'notified' %}active{% endif %}" href="/?status=notified">已通知</a>
+  <a class="filter {% if selected_status == 'draft_pending' %}active{% endif %}" href="/?status=draft_pending">待审核</a>
+  <a class="filter {% if selected_status == 'send_failed' %}active{% endif %}" href="/?status=send_failed">发送失败</a>
+  <a class="filter {% if selected_status == 'sent_done' %}active{% endif %}" href="/?status=sent_done">已发送</a>
+  <a class="filter {% if selected_view == 'history' %}active{% endif %}" href="/?view=history">处理历史</a>
+</div>
+<div class="actions" style="margin-bottom: 16px;">
+  <form action="/actions/poll" method="post">
+    <button type="submit" class="secondary">立即收取邮件</button>
+  </form>
+  {% if selected_status == "ignored" and ignored_unread_count %}
+  <form action="/reviews/mark-read/batch" method="post">
+    <button type="submit">批量已读（{{ ignored_unread_count }} 封）</button>
+  </form>
+  {% endif %}
+</div>
+<table class="review-table">
+  <thead>
+    <tr><th>发件人</th><th>主题</th><th>分类</th><th>状态</th><th>接收时间</th><th>操作</th></tr>
+  </thead>
+  <tbody>
+    {% for email in emails %}
+    <tr>
+      <td>{{ email.sender }}</td>
+      <td>{{ email.subject or "（无主题）" }}</td>
+      <td>{{ category_labels.get(email.category, "-") if email.category else "-" }}</td>
+      <td><span class="badge {% if email.status == "draft_pending" %}pending{% elif email.status == "notified" %}notify{% elif email.status == "sent_done" %}done{% elif email.status == "send_failed" %}failed{% endif %}">{{ status_labels.get(email.status, email.status) }}</span></td>
+      <td>{{ email.received_at.strftime("%Y-%m-%d %H:%M") if email.received_at else "-" }}</td>
+      <td>
+        {% set detail_from = 'history' if selected_view == 'history' else selected_status %}
+        <a href="/reviews/{{ email.id }}{% if detail_from %}?from={{ detail_from }}{% if selected_view == 'history' %}&page={{ history_page.page }}{% endif %}{% endif %}">{% if selected_view == 'history' or email.status in ["ignored", "sent_done"] %}查看{% elif email.status in ["notified", "send_failed"] %}处理{% else %}审核{% endif %}</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted">{% if selected_view == 'history' %}暂无处理历史{% else %}暂无待处理邮件{% endif %}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% if selected_view == 'history' and history_page %}
+<div class="pagination">
+  {% if history_page.has_previous %}
+  <a class="page-link" href="/?view=history{% if selected_status %}&status={{ selected_status }}{% endif %}&page={{ history_page.page - 1 }}">上一页</a>
+  {% else %}
+  <span class="page-link disabled">上一页</span>
+  {% endif %}
+  <span class="pagination-info">第 {{ history_page.page }} / {{ history_page.total_pages }} 页 · 共 {{ history_page.total }} 条</span>
+  {% if history_page.has_next %}
+  <a class="page-link" href="/?view=history{% if selected_status %}&status={{ selected_status }}{% endif %}&page={{ history_page.page + 1 }}">下一页</a>
+  {% else %}
+  <span class="page-link disabled">下一页</span>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
